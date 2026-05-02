@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Shapez2 ASCII Art Generator</title>
+		<link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg" type="image/x-icon">
+		<link rel="stylesheet" href="./index.css"/>
+		<style>
+			.main-image-panel {
+				display: flex;
+				flex-direction: column;
+			}
+
+			input[type="number"] {
+				margin-left: 0.8rem;
+			}
+
+			.convertor-image-card {
+				width: calc((100% - 2.45rem) / 2);
+				display: flex;
+				flex-direction: column;
+			}
+			.image-convertor {
+				display: flex;
+				justify-content: center;
+				align-items: stretch;
+				margin: 0.25rem 0.5rem 0 0.5rem;
+			}
+			.image-convertor .convertor-image {
+				--hatch-thickness: 0.175em;
+				width: 100%;
+				aspect-ratio: 1.0;
+				cursor: pointer;
+				image-rendering: pixelated;
+				background: repeating-linear-gradient(
+					135deg,
+					transparent 0,
+					transparent var(--hatch-thickness),
+					#8883 calc(var(--hatch-thickness) + 0.1px),
+					#8883 calc(3 * var(--hatch-thickness))
+				);
+			}
+			.image-convertor .convertor-arrow {
+				width: 1.5rem;
+				background: conic-gradient(
+					at 100% 50%,
+					transparent 225deg,
+					var(--color) 226deg,
+					var(--color) 314deg,
+					transparent 315deg
+				);
+				margin: 0 1.5rem 0 1.75rem;
+			}
+
+			.grayscale-range-picker {
+				flex-grow: 1;
+				user-select: none;
+				margin-right: 1.25REM;
+			}
+			.grayscale-bar {
+				height: 1em;
+				border: var(--color) solid;
+				border-width: 0 0.625REM;
+				background: linear-gradient(90deg, black, white);
+			}
+			.grayscale-indicator {
+				--position: 0.5;
+				position: relative;
+				cursor: pointer;
+				height: 0.7em;
+				width: 1em;
+				left: calc(var(--position) * (100% - 1.25REM));
+				margin-bottom: -0.7em;
+				background: conic-gradient(at center -1px, transparent 146deg, var(--color) 150deg, var(--color) 210deg, transparent 214deg);
+				transition: left 0.05s;
+				&::after {
+					content: "";
+					position: absolute;
+					width: 0.15em;
+					height: 1em;
+					left: 0.4em;
+					top: -1.25rem;
+					backdrop-filter: invert(100%);
+				}
+			}
+		</style>
+		<script src="./index.js"></script>
+		<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+	</head>
+	<body>
+		<article>
+			<div class="work-in-progress"></div>
+			<h1><a href="https://github.com/redstone-heart/shapez2-ascii-art-generator">Shapez2 ASCII Art Generator</a></h1>
+			<hr/>
+			<h2>Quick Usage</h2>
+			<p>This page is an online static version of <a href="https://github.com/redstone-heart/shapez2-ascii-art-generator">Shapez2 ASCII Art Generator</a>. For a higher-performance, directly callable library tool, please visit the GitHub repository to clone the Python version of this project. If you like this tool, please give it a star :).</p>
+			<!-- <p>Using this tool, you can convert any image to <a href="https://shapez2.com/">Shapez2</a> blueprint format and paste it in the game. <a href="https://docs.unity3d.com/Packages/com.unity.ugui@2.6/manual/TextMeshPro/RichText.html">uGUI Rich Text Tags</a>. However, due to the limitations of the building colors, the tool currently only generates grayscale images. If you need to generate images for near-distance viewing, you can modify the color palette in <a href="#custom-palette">Custom Palette</a> to adapt near-distance building colors.</p> -->
+			<p><s>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</s></p>
+			<fieldset>
+				<legend>Image Preview</legend>
+				<div class="fieldset-item">
+					<div class="image-convertor">
+						<div class="convertor-image-card">
+							<canvas class="convertor-image" id="image-input-canvas"></canvas>
+							<p>Click the image placeholder above to select the original image to be processed.</p>
+						</div>
+						<div class="convertor-arrow"></div>
+						<div class="convertor-image-card">
+							<div class="modal-overlay-wrapper">
+								<canvas class="convertor-image" id="image-output-canvas"></canvas>
+								<div class="modal-overlay hidden-modal-overlay" id="output-loading-ring-overlay">
+									<div class="loading-ring"></div>
+								</div>
+							</div>
+							<p>Click the output image to copy the blueprint.</p>
+						</div>
+					</div>
+				</div>
+			</fieldset>
+			<h2>Optional Settings</h2>
+			<p><s>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</s></p>
+			<fieldset>
+				<legend>Image Processing</legend>
+				<div class="fieldset-item">
+					<label>Brightness normalization:&ensp;</label>
+				</div>
+				<p>Drag the slider below to remap the grayscale output range. Click "Auto Detect" to automatically match the current image's grayscale range, or click "High Contrast" to maximize it.</p>
+				<div class="fieldset-item">
+					<div class="grayscale-range-picker">
+						<div class="grayscale-bar"></div>
+						<div class="grayscale-indicator" style="--position: 0;"></div>
+						<div class="grayscale-indicator" style="--position: 1;"></div>
+					</div>
+					<div class="horizontal-group">
+						<button id="grayscale-auto-detect-button">Auto Detect</button>
+						<div class="button-splitter"></div>
+						<button id="grayscale-high-contrast-button">High Contrast</button>
+					</div>
+				</div>
+				<div class="fieldset-item">
+					<label>Posterization preference:&ensp;</label>
+					 <div class="horizontal-group">
+						 <div class="checkbox-wrapper">
+							 <input type="checkbox" checked id="dithering-checkbox"/>
+						</div>
+						<label for="dithering-checkbox">Enable pixel dithering</label>
+					</div>
+				</div>
+			</fieldset>
+			<p><s>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</s></p>
+			<fieldset>
+				<legend id="custom-palette">Blueprint Generation</legend>
+				<div class="fieldset-item">
+					<label>Background pattern:&ensp;</label>
+					<div class="spacing-horizontal-group">
+						<div class="horizontal-group">
+							<div class="radio-wrapper">
+								<input type="radio" id="display-background-radio-button" name="background-pattern" checked/>
+							</div>
+							<label for="display-background-radio-button">Display 3×3</label>
+						</div>
+						<div class="horizontal-group">
+							<div class="radio-wrapper">
+								<input type="radio" id="trash-background-radio-button" name="background-pattern"/>
+							</div>
+							<label for="trash-background-radio-button">Trash</label>
+						</div>
+						<div class="horizontal-group">
+							<div class="radio-wrapper">
+								<input type="radio" id="empty-background-radio-button" name="background-pattern"/>
+							</div>
+							<label for="empty-background-radio-button">Empty (for dark mode)</label>
+						</div>
+					</div>
+				</div>
+				<div class="fieldset-item">
+					<label>Parallax (layer offset):&ensp;</label>
+					<div class="horizontal-group">
+						<input type="range" id="parallax-range" min="0" max="40" step="0.1" value="15"/>
+						<input type="number" id="parallax-input" min="0" max="40" step="0.1" value="15"/>
+					</div>
+				</div>
+				<div class="fieldset-item">
+					<label>Font size:&ensp;</label>
+					<div class="horizontal-group">
+						<input type="range" id="font-size-range" min="650" max="1250" step="0.1" value="1050"/>
+						<input type="number" id="font-size-input" min="650" max="1250" step="0.1" value="1050"/>
+					</div>
+				</div>
+			</fieldset>
+			<p>You can also use a custom palette (grayscale ramp) to generate more personalized ASCII images. To create a palette, you just need to provide the character sequence in ascending order.</p>
+			<fieldset>
+				<legend id="custom-palette">Custom Palette</legend>
+				<!-- <p>A template blueprint includes a sequence of buildings arranged from west to east. The easternmost and westernmost ends use any two arbitrary buildings to define the blueprint's boundaries, with each building in the grid between them representing an available grayscale (excluding the two ends). For example, "Trash A B C Trash" defines a palette template containing three grayscales: A, B, and C. You can construct a suitable palette structure in the game and paste its blueprint into the textarea below.</p> -->
+				<div class="fieldset-item">
+					<div class="textarea-wrapper">
+						<textarea id="palette-grayscales-input" style="resize: vertical;" placeholder="Input your grayscale ramp from sparse to dense"></textarea>
+					</div>
+				</div>
+				<div class="fieldset-item">
+					<div></div>
+					<div class="horizontal-group">
+						<button id="custom-palette-button">Use Custom</button>
+						<div class="button-splitter"></div>
+						<button id="preset-binary-palette-button">Use Preset (Binary)</button>
+						<div class="button-splitter"></div>
+						<button id="preset-42colors-palette-button">Use Preset (42 Colors)</button>
+					</div>
+				</div>
+			</fieldset>
+		</article>
+		
+		<script type="module">
+			startLoading();
+			let pyodide = null;
+			try {
+				pyodide = await loadPyodide({indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"});
+				await pyodide.loadPackage(["numpy", "opencv-python"]);
+				await pyodide.runPythonAsync(String.raw`
+import base64
+import gzip
+import json
+import cv2
+import numpy as np
+
+
+
+PREFIX = "SHAPEZ2-4-"
+VERSION = 1134
+
+
+
+def parse_blueprint(blueprint: str) -> dict:
+	blueprint_base64 = blueprint[len(PREFIX):]
+	blueprint_compressed = base64.b64decode(blueprint_base64)
+	blueprint_json = json.loads(gzip.decompress(blueprint_compressed).decode("UTF-8"))
+	return blueprint_json
+
+def build_blueprint(blueprint_json: dict) -> str:
+	blueprint_json: str = json.dumps(blueprint_json)
+	blueprint_compressed = gzip.compress(blueprint_json.encode("UTF-8"))
+	blueprint_base64 = base64.b64encode(blueprint_compressed).decode("ASCII")
+	return PREFIX + blueprint_base64 + "$"
+
+def make_foundation_blueprint_template(type: str = "Foundation_3x3") -> dict:
+	return {
+		"V": VERSION,
+		"BP": {
+			"$type": "Island",
+			"Icon": {"Data": ["icon:Platforms", None, None, "shape:RuRuRuRu"]},
+			"Entries": [
+				{
+					"T": type,
+					"B": {
+						"$type": "Building",
+						"Icon": {"Data": ["icon:Buildings", None, None, "shape:CuCuCuCu"]},
+						"Entries": [],
+						"BinaryVersion": VERSION
+					}
+				}
+			],
+			"BinaryVersion": VERSION
+		}
+	}
+
+
+
+def empty_background_provider(x: int, y: int) -> list[dict]:
+	return []
+
+def trash_background_provider(x: int, y: int) -> list[dict]:
+	return [{"X": x, "Y": y, "T": "TrashDefaultInternalVariant"}]
+
+def display_background_provider(x: int, y: int) -> list[dict]:
+	if (x + 15) % 6 != 0 or (y + 15) % 6 != 0:
+		return []
+	return [
+		{"X": x, "Y": y, "R": 3, "T": "Display3x3InternalVariant"},
+		{"X": x, "Y": y + 1, "R": 1, "T": "Display3x3InternalVariantMirrored"},
+		{"X": x + 1, "Y": y, "R": 3, "T": "Display3x3InternalVariantMirrored"},
+		{"X": x + 1, "Y": y + 1, "R": 1, "T": "Display3x3InternalVariant"}
+	]
+
+background_providers = {
+	"empty": empty_background_provider,
+	"trash": trash_background_provider,
+	"display": display_background_provider
+}
+
+def make_canvas_blueprint_template(background_type: str) -> dict:
+	background = []
+	background_provider = background_providers[background_type]
+	for x in range(-17, 37):
+		for y in range(-17, 37):
+			background += background_provider(x, y)
+	blueprint_json = make_foundation_blueprint_template()
+	blueprint_json["BP"]["Entries"][0]["B"]["Entries"] = background
+	return blueprint_json
+
+def parse_label_content(content: str) -> str:
+	return base64.b64decode(content.encode())[2:].decode()
+
+def build_label_content(content: str) -> str:
+	return base64.b64encode(b" \x01" + content.encode()).decode()
+
+
+
+def load_grayscale_image(image_path: str) -> np.ndarray:
+	image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+	return image.astype(np.float32) / 255.0
+
+def adjust_grayscale(
+	image: np.ndarray,
+	min_grayscale: float | None = None,
+	max_grayscale: float | None = None
+) -> np.ndarray:
+	original_min = np.min(image)
+	original_max = np.max(image)
+	if min_grayscale is None:
+		min_grayscale = original_min
+	if max_grayscale is None:
+		max_grayscale = original_max
+	normalized_image = (image - original_min) / max(original_max - original_min, 1e-8)
+	return normalized_image * (max_grayscale - min_grayscale) + min_grayscale
+
+def resize_image(image: np.ndarray, width: int, height: int) -> np.ndarray:
+	return cv2.resize(image, (width, height), interpolation = cv2.INTER_AREA)
+
+def posterize(image: np.ndarray, grayscale_ramp: str) -> np.ndarray:
+	palette = np.linspace(0, 1, len(grayscale_ramp))
+	indices = np.argmin(np.abs(image[..., None] - palette), axis = -1)
+	return palette[indices]
+
+def dither(image: np.ndarray, grayscale_ramp: str) -> np.ndarray:
+	palette = np.linspace(0, 1, len(grayscale_ramp))
+	dithered = image.copy()
+	height, width = dithered.shape
+	for y in range(height):
+		for x in range(width):
+			real_grayscale = dithered[y, x]
+			posterized_grayscale = palette[np.argmin(np.abs(palette - real_grayscale))]
+			dithered[y, x] = posterized_grayscale
+			if y == height - 1 or x == 0 or x == width - 1:
+				continue
+			error = real_grayscale - posterized_grayscale
+			dithered[y,     x + 1] += error * 7 / 16
+			dithered[y + 1, x - 1] += error * 3 / 16
+			dithered[y + 1, x    ] += error * 5 / 16
+			dithered[y + 1, x + 1] += error * 1 / 16
+	return dithered
+
+
+
+def image_to_ascii(
+	posterized_image: np.ndarray,
+	grayscale_ramp: str
+) -> np.ndarray:
+	indices = (posterized_image * (len(grayscale_ramp) - 1)).astype(np.uint16)
+	ascii = np.array(list(grayscale_ramp))[indices]
+	return ascii
+
+def ascii_to_blueprint_json(
+	ascii: np.ndarray,
+	size = 1050,
+	parallax: float = 0,
+	background_type: str = "display"
+) -> dict:
+	blueprint_json = make_canvas_blueprint_template(background_type)
+	
+	def make_label_content_template(side, column):
+		template_index = side * 6 + column % 6
+		padding = "ㅤ" * (31 + (template_index // 2 if side == 0 else 5 - template_index // 2))
+		offset = (-800 if side == 1 else 300) + (column % 6) // 2 * 400
+		indent = (column % 6 - 2.5) * 10000 / 6
+		if column % 2 == 0:
+			indent = indent + (column - ascii.shape[1] / 2) * parallax
+		return f"<voffset={offset}><indent={round(indent)}><size={size}><line-height=1600>{'{}' + padding if side == 0 else padding + '{}'}"
+	
+	for side in range(2):
+		for column in range(ascii.shape[1]):
+			label_x = -13 + 5 * (column // 6)
+			label_y = (34 if side == 0 else -17) + (column % 6) // 2
+			label_layer = column % 2 + 1
+			label_ascii = ""
+			for row in range(side, ascii.shape[0], 2):
+				label_ascii += ascii[row][column]
+			label_content_template = make_label_content_template(side, column)
+			label_content = label_content_template.format(label_ascii)
+			blueprint_json["BP"]["Entries"][0]["B"]["Entries"].append({
+				"X": label_x,
+				"Y": label_y,
+				"L": label_layer,
+				"T": "LabelDefaultInternalVariant",
+				"C": build_label_content(label_content)
+			})
+	return blueprint_json
+
+
+
+states = {
+	"original_grayscale_range": None,
+	"resized_grayscale_image": None,
+	"grayscale_normalized_image": None,
+	"posterized_image": None,
+	"output_image_data": None,
+	"blueprint": None
+}
+
+def update_scaled_grayscale_image_from_image_data_proxy(
+	image_data_proxy,
+	image_width: int,
+	image_height: int
+) -> None:
+	pixels_array = np.array(image_data_proxy)
+	rgba = pixels_array.reshape(image_height, image_width, 4)
+	gray = (rgba[:, :, 0] * 0.299 + rgba[:, :, 1] * 0.587 + rgba[:, :, 2] * 0.114) / 255.0
+	resized = resize_image(gray, 60, 60)
+	states["resized_grayscale_image"] = resized
+	states["original_grayscale_range"] = [np.min(resized), np.max(resized)]
+
+def update_grayscale_normalized_image(
+	min_grayscale: float | None = None,
+	max_grayscale: float | None = None
+) -> None:
+	states["grayscale_normalized_image"] = adjust_grayscale(
+		states["resized_grayscale_image"],
+		min_grayscale,
+		max_grayscale
+	)
+
+def update_posterized_image(dithering: bool, grayscale_ramp: str) -> None:
+	states["posterized_image"] = (dither if dithering else posterize)(
+		states["grayscale_normalized_image"], grayscale_ramp
+	)
+
+def update_output_image_data() -> None:
+	gray_uint8 = (states["posterized_image"] * 255).astype(np.uint8)
+	rgba = np.zeros((60, 60, 4), dtype = np.uint8)
+	rgba[:, :, 0] = gray_uint8
+	rgba[:, :, 1] = gray_uint8
+	rgba[:, :, 2] = gray_uint8
+	rgba[:, :, 3] = 255
+	states["output_image_data"] = str(rgba.flatten().tolist())
+
+def update_blueprint(
+	font_size: int = 1050,
+	grayscale_ramp: str = "ѬM@%&B8G60bhXZyaoxuzvct*r⁰<=⁙•°″\";~:_-'.ㅤ"[::-1],
+	parallax: float = 15,
+	background_type: str = "display"
+) -> None:
+	ascii_result = image_to_ascii(states["posterized_image"], grayscale_ramp)
+	blueprint_json = ascii_to_blueprint_json(ascii_result, font_size, parallax, background_type)
+	states["blueprint"] = build_blueprint(blueprint_json)
+				`);
+				endLoading();
+			}
+			catch (error) {
+				failLoading(error.message);
+			}
+
+
+			
+			const states = {
+				imageWidth: null,
+				imageHeight: null,
+				minGrayscale: null,
+				maxGrayscale: null,
+				dithering: true,
+				fontSize: 1050,
+				grayscaleRamp: "ѬM@%&B8G60bhXZyaoxuzvct*r⁰<=⁙•°″\";~:_-'.ㅤ".split("").reverse().join(""),
+				parallax: 15,
+				backgroundType: "display"
+			};
+			const imageInputCanvas = document.getElementById("image-input-canvas");
+			const imageOutputCanvas = document.getElementById("image-output-canvas");
+			imageOutputCanvas.width = 60;
+			imageOutputCanvas.height = 60;
+			const offscreenCanvas = new OffscreenCanvas(0, 0);
+			offscreenCanvas.width = 60;
+			offscreenCanvas.height = 60;
+
+
+
+			function updateOutputImageData() {
+				if (pyodide.globals.get("states").get("posterized_image") == null)
+					return;
+				pyodide.globals.get("update_output_image_data")();
+				let outputImageData = pyodide.globals.get("states").get("output_image_data");
+				showOutputImage(JSON.parse(outputImageData));
+			}
+			function updatePosterizedImage() {
+				if (states.dithering == null || states.grayscaleRamp == null)
+					return;
+				if (pyodide.globals.get("states").get("grayscale_normalized_image") == null)
+					return;
+				pyodide.globals.get("update_posterized_image")(states.dithering, states.grayscaleRamp);
+				updateOutputImageData();
+			}
+			function updateGrayscaleNormalizedImage() {
+				if (states.minGrayscale == null || states.maxGrayscale == null)
+					return;
+				if (pyodide.globals.get("states").get("resized_grayscale_image") == null)
+					return;
+				pyodide.globals.get("update_grayscale_normalized_image")(states.minGrayscale, states.maxGrayscale);
+				updatePosterizedImage();
+			}
+			function updateScaledGrayscaleImage(data) {
+				if (states.imageWidth == null || states.imageHeight == null)
+					return;
+				pyodide.globals.get("update_scaled_grayscale_image_from_image_data_proxy")(
+					Array.from(data),
+					states.imageWidth,
+					states.imageHeight
+				);
+				grayscaleAutoDetectButton.click();
+				updateGrayscaleNormalizedImage();
+			}
+
+
+
+			function showInputImage(image) {
+				const context = imageInputCanvas.getContext("2d");
+				context.imageSmoothingEnabled = false;
+				context.webkitImageSmoothingEnabled = false;
+				context.mozImageSmoothingEnabled = false;
+				imageInputCanvas.width = image.width;
+				imageInputCanvas.height = image.height;
+				context.drawImage(image, 0, 0);
+			}
+			function showOutputImage(data) {
+				const context = imageOutputCanvas.getContext("2d");
+				context.clearRect(0, 0, 60, 60);
+				context.imageSmoothingEnabled = false;
+				context.webkitImageSmoothingEnabled = false;
+				context.mozImageSmoothingEnabled = false;
+				const imageData = context.createImageData(60, 60);
+				for (let index = 0; index < 4 * 60 * 60; ++index)
+					imageData.data[index] = data[index];
+				offscreenCanvas.getContext("2d").putImageData(imageData, 0, 0);
+				context.drawImage(offscreenCanvas, 0, 0, 60, 60);
+			}
+
+			async function loadImage(imageFile) {
+				return new Promise((resolve, reject) => {
+					const image = new Image();
+					image.onload = () => {
+						showInputImage(image);
+						const context = imageInputCanvas.getContext("2d");
+						const imageData = context.getImageData(0, 0, image.width, image.height);
+						resolve({imageData: imageData, width: imageData.width, height: imageData.height});
+					};
+					image.onerror = reject;
+					image.src = URL.createObjectURL(imageFile);
+				});
+			}
+
+			imageInputCanvas.addEventListener("click", () => {
+				const input = document.createElement("input");
+				input.type = "file";
+				input.accept = "image/*,.image";
+				input.onchange = async event => {
+					const file = event.target.files[0];
+					if (file) {
+						let image = await loadImage(file);
+						states.imageWidth = image.width;
+						states.imageHeight = image.height;
+						updateScaledGrayscaleImage(image.imageData.data);
+					}
+				};
+				input.click();
+			});
+
+			const grayscaleIndicators = document.getElementsByClassName("grayscale-indicator");
+			function getGrayscaleRangeIndicators() {
+				let lowerIndicator = grayscaleIndicators[0];
+				let higherIndicator = grayscaleIndicators[1];
+				const lowerGrayscale = parseFloat(lowerIndicator.style.getPropertyValue("--position"));
+				const higherGrayscale = parseFloat(higherIndicator.style.getPropertyValue("--position"));
+				if (lowerGrayscale > higherGrayscale)
+					[lowerIndicator, higherIndicator] = [higherIndicator, lowerIndicator];
+				return [lowerIndicator, higherIndicator];
+			}
+			function getGrayscaleRange() {
+				const [lowerIndicator, higherIndicator] = getGrayscaleRangeIndicators();
+				const lowerGrayscale = parseFloat(lowerIndicator.style.getPropertyValue("--position"));
+				const higherGrayscale = parseFloat(higherIndicator.style.getPropertyValue("--position"));
+				return [lowerGrayscale, higherGrayscale];
+			}
+			function setGrayscaleRange(grayscaleRange) {
+				const [lowerIndicator, higherIndicator] = getGrayscaleRangeIndicators();
+				lowerIndicator.style.setProperty("--position", grayscaleRange[0]);
+				higherIndicator.style.setProperty("--position", grayscaleRange[1]);
+				[states.minGrayscale, states.maxGrayscale] = grayscaleRange;
+				updateGrayscaleNormalizedImage();
+			}
+			for (const indicator of grayscaleIndicators)
+				indicator.addEventListener("mousedown", event => {
+					const thisIndicator = event.target;
+					const bar = thisIndicator.parentElement;
+					const barRectangle = bar.getBoundingClientRect();
+					const onMouseMove = event => {
+						let position = (event.clientX - barRectangle.left) / barRectangle.width;
+						position = Math.max(0, Math.min(1, position));
+						thisIndicator.style.setProperty("--position", position);
+						setGrayscaleRange(getGrayscaleRange());
+					};
+					document.addEventListener("mousemove", onMouseMove);
+					document.addEventListener("mouseup", () => document.removeEventListener("mousemove", onMouseMove));
+				});
+
+			const grayscaleAutoDetectButton = document.getElementById("grayscale-auto-detect-button");
+			const grayscaleHighContrastButton = document.getElementById("grayscale-high-contrast-button");
+			grayscaleAutoDetectButton.addEventListener("click", () => {
+				let grayscaleRange = pyodide.globals.get("states").get("original_grayscale_range");
+				if (grayscaleRange == null)
+					return;
+				setGrayscaleRange(grayscaleRange);
+			});
+			grayscaleHighContrastButton.addEventListener("click", () => {
+				setGrayscaleRange([0, 1]);
+			});
+
+			document.getElementById("dithering-checkbox").addEventListener("change", event => {
+				states.dithering = event.target.checked;
+				updatePosterizedImage();
+			});
+
+			let displayBackgroundRadioButton = document.getElementById("display-background-radio-button");
+			let trashBackgroundRadioButton = document.getElementById("trash-background-radio-button");
+			let emptyBackgroundRadioButton = document.getElementById("empty-background-radio-button");
+			displayBackgroundRadioButton.addEventListener("click", () => { states.backgroundType = "display"; });
+			trashBackgroundRadioButton.addEventListener("click", () => { states.backgroundType = "trash"; });
+			emptyBackgroundRadioButton.addEventListener("click", () => { states.backgroundType = "empty"; });
+
+			let parallaxRange = document.getElementById("parallax-range");
+			let parallaxInput = document.getElementById("parallax-input");
+			bindValues(parallaxRange, parallaxInput, value => { states.parallax = parseFloat(value); });
+
+			let fontSizeRange = document.getElementById("font-size-range");
+			let fontSizeInput = document.getElementById("font-size-input");
+			bindValues(fontSizeRange, fontSizeInput, value => { states.fontSize = parseFloat(value); });
+
+			const paletteGrayscalesInput = document.getElementById("palette-grayscales-input");
+			const customPaletteButton = document.getElementById("custom-palette-button");
+			const presetBinaryPaletteButton = document.getElementById("preset-binary-palette-button");
+			const preset42ColorsPaletteButton = document.getElementById("preset-42colors-palette-button");
+			customPaletteButton.addEventListener("click", async () => {
+				try {
+					let grayscales = paletteGrayscalesInput.value;
+					if (grayscales == null || grayscales.length < 2)
+						throw new Error("Please input at least 2 characters.");
+					states.grayscaleRamp = grayscales.replace(" ", "ㅤ");
+					updatePosterizedImage();
+					showSuccessToast("Custom palette applied successfully.");
+				}
+				catch (error) {
+					showErrorToast(error.message);
+				}
+			});
+			presetBinaryPaletteButton.addEventListener("click", () => {
+				states.grayscaleRamp = "ㅤ#";
+				showSuccessToast("Binary palette has been enabled.");
+				updatePosterizedImage();
+			});
+			preset42ColorsPaletteButton.addEventListener("click", () => {
+				states.grayscaleRamp = "ѬM@%&B8G60bhXZyaoxuzvct*r⁰<=⁙•°″\";~:_-'.ㅤ".split("").reverse().join("");
+				showSuccessToast("Default palette has been enabled.");
+				updatePosterizedImage();
+			});
+
+			imageOutputCanvas.addEventListener("click", async () => {
+				const outputLoadingRingOverlay = document.getElementById("output-loading-ring-overlay");
+				try { updateOutputImageData(); }
+				catch (error) {
+					showErrorToast("No image in workspace.");
+					return;
+				}
+				outputLoadingRingOverlay.classList.remove("hidden-modal-overlay");
+				const finishLoading = (message, toastType = "success") => {
+					setTimeout(() => {
+						showToast(message, toastType);
+						outputLoadingRingOverlay.classList.add("hidden-modal-overlay");
+					}, 250);
+				};
+				setTimeout(() => {
+					try {
+						pyodide.globals.get("update_blueprint")(
+							states.fontSize,
+							states.grayscaleRamp,
+							states.parallax,
+							states.backgroundType
+						);
+						let blueprint = pyodide.globals.get("states").get("blueprint");
+						navigator.clipboard.writeText(blueprint)
+							.then(() => finishLoading("Copy blueprint to clipboard successfully."))
+							.catch(() => finishLoading("Failed to write clipboard.", "error"));
+					}
+					catch (error) {
+						finishLoading(`Failed to generate blueprint: ${error.message}`, "error");
+					}
+				});
+			});
+		</script>
+	</body>
+</html>
