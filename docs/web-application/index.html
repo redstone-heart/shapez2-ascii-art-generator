@@ -670,8 +670,7 @@ def update_blueprint(
 
 			imageOutputCanvas.addEventListener("click", async () => {
 				const outputLoadingRingOverlay = document.getElementById("output-loading-ring-overlay");
-				try { updateOutputImageData(); }
-				catch (error) {
+				if (pyodide.globals.get("states").get("output_image_data") == null) {
 					showErrorToast("No image in workspace.");
 					return;
 				}
